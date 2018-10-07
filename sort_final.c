@@ -87,14 +87,14 @@ void merge_arr(entry *res_arr, entry *arr1, entry *arr2, int len1, int len2){
             if(l_ptr == len1){
                 for (int j = r_ptr; j < len2; ++j)
                 {
-                    printf("dumping %s into slot %d\n", arr2[j].team1, i);
+                    // printf("dumping %s into slot %d\n", arr2[j].team1, i);
                     res_arr[i++] = arr2[j];
                 }
             }
             else if(r_ptr == len2){
                 for (int j = l_ptr; j < len1; ++j)
                 {
-                    printf("dumping %s into slot %d\n", arr1[j].team1, i);
+                    // printf("dumping %s into slot %d\n", arr1[j].team1, i);
                     res_arr[i++] = arr1[j];
                 }
             }
@@ -247,7 +247,7 @@ int main(int argc, char const *argv[])
 
     int choice = 0;
 
-    while(choice != 1 && choice != 2 /*&& choice != 4 && choice != 8*/){
+    while(choice != 1 && choice != 2 && choice != 4 /*&& choice != 8*/){
         scanf("%d", &choice);
     }
 
@@ -342,6 +342,191 @@ int main(int argc, char const *argv[])
     }
 
     /*----------------------------------------------*/
+
+    if(choice == 4){
+        time_t start = time(NULL);
+
+        //split original array
+        int len1 = num_lines / 2;
+        int mid1 = len1 / 2;
+        int rem1 = len1 - mid1;
+
+        int len2 = num_lines - len1;
+        int mid2 = len2 / 2;
+        int rem2 = len2 - mid2;
+
+        //willl split the original array into two halves
+        //each half is stored in temp1 and temp2
+        entry *temp1 = create_shared_mem(len1 * sizeof(entry));
+        entry *temp2 = create_shared_mem(len2 * sizeof(entry));
+
+        //the two halves are then split into four quarters
+        //which are stored in theses variables
+        entry *arr1 = create_shared_mem(mid1 * sizeof(entry));
+        entry *arr2 = create_shared_mem(rem1 * sizeof(entry));
+        entry *arr3 = create_shared_mem(mid2 * sizeof(entry));
+        entry *arr4 = create_shared_mem(rem2 * sizeof(entry));
+
+        //split original array
+        split(entries, temp1, temp2, len1, len2);
+
+        //split first half of original array
+        split(temp1, arr1, arr2, mid1, rem1);
+
+        //split seccond half of original array
+        split(temp2, arr3, arr4, mid2, rem2);
+
+        //by now we have four arrays
+
+        // pid_t *p1 = create_shared_mem(sizeof(pid_t));
+        pid_t p1, p2, p3, p4;
+
+        int pid = fork();
+        //now we have two processes
+
+        if(pid < 0){
+            perror("fork failed");
+            exit(-1);
+        }
+
+        else if(pid == 0){
+            //child process
+            p2 = getpid();
+            printf("p2 pid is %d\n", p2);
+
+            /*-------------------------------*/
+
+                pid = fork();
+
+                if(pid < 0){
+                    perror("fork failed");
+                    exit(-1);
+                }
+
+                else if (pid == 0){
+                    p4 = getpid();
+                    printf("p4 pid is %d\n", p4);
+
+                    // exit(1);
+                }
+
+                else if(pid > 0){
+                    printf("p4 parent id is %d\n", getpid());
+                }
+
+            /*-------------------------------*/
+
+            // exit(1);
+        }
+
+        else if (pid > 0){
+            p1 = getpid();
+            printf("p1 pid is %d\n", p1);
+
+            /*-------------------------------*/
+
+                pid = fork();
+
+                if(pid < 0){
+                    perror("fork failed");
+                    exit(-1);
+                }
+
+                else if (pid == 0){
+                    p3 = getpid();
+                    printf("p3 pid is %d\n", p3);
+
+                    // exit(1);
+                }
+
+                else if(pid > 0){
+                    printf("p3 parent id is %d\n", getpid());
+                }
+
+            /*-------------------------------*/
+
+            wait(NULL);
+        }
+
+        printf("---------------------\n");
+
+        if(p1 == getpid()){
+            // printf("I am process p1 and my pid is %d\n", getpid());
+            printf("sorting in p1\n");
+            bubbly(arr1, mid1);
+        }
+        if(p2 == getpid()){
+            // printf("I am process p2 and my pid is %d\n", getpid());
+            printf("sorting in p2\n");
+            bubbly(arr2, rem1);
+
+            exit(1);
+        }
+        if(p3 == getpid()){
+            // printf("I am process p3 and my pid is %d\n", getpid());
+            printf("sorting in p3\n");
+            bubbly(arr3, mid2);
+
+            exit(1);
+        }
+        if(p4 == getpid()){
+            // printf("I am process p4 and my pid is %d\n", getpid());
+            printf("sorting in p4\n");
+            bubbly(arr4, rem2);
+
+            exit(1);
+        }
+
+        merge_arr(temp1, arr1, arr2, mid1, rem1);
+
+        merge_arr(temp2, arr3, arr4, mid2, rem2);
+
+        merge_arr(entries, temp1, temp2, len1, len2);
+
+        printf("final sorted list:\n");
+        puke(entries, num_lines);
+
+        time_t end = time(NULL);
+
+        time_t delta = end - start;
+
+        printf("Sort took %ld seconds\n", delta);
+
+        /*for (int i = 0; i < 2; ++i)
+        {
+            int pid = fork();
+
+            if(pid < 0){
+                perror("fork failed");
+                exit(-1);
+            }
+
+            else if(pid == 0){
+
+                if(i == 0){
+                    bubbly(arr1, mid1);
+                }
+                else if (i == 1){
+                    bubbly(arr4, rem2);
+                }
+
+                exit(1);
+            }
+
+            else if(pid > 0){
+
+                if(i == 0){
+                    bubbly(arr1, mid1);
+                }
+                else if (i == 1){
+                    bubbly(arr4, rem2);
+                }
+
+                wait(NULL);
+            }
+        }*/
+
+    }
 
     /*if(choice == 4){
 
