@@ -144,7 +144,7 @@ void split(entry *arr, entry *arr1, entry *arr2, int arr1_len, int arr_2len){
 void forker(pid_t *arr, int len){
 
     arr[0] = getpid();
-    printf("parent process id is %d\n", arr[0]);
+    // printf("parent process id is %d\n", arr[0]);
 
     for (int i = 0; i < len; ++i)
     {
@@ -163,7 +163,7 @@ void forker(pid_t *arr, int len){
             pid_t p2 = getpid();
             // printf("pid is %d\n", p2);
             arr[i] = getpid();
-            printf("arr[i] is %d\n", arr[i]);
+            // printf("arr[i] is %d\n", arr[i]);
             // exit(1);
         }
 
@@ -214,7 +214,7 @@ void puke(entry entries[], int num_lines){
 
 //simple bubble sort routine to sort by team1
 void bubbly(entry *arr, int end){
-    printf("entered bubbly\n");
+    // printf("entered bubbly\n");
     for (int i = 0; i < end - 1; ++i)
     {
         for (int j = 0; j < (end - i - 1); ++j)
@@ -231,18 +231,19 @@ void bubbly(entry *arr, int end){
 int main(int argc, char const *argv[])
 {
 
+    //open a file for read only to read in our data
     FILE *file = fopen(argv[1], "r");
     char *value_buffer;
 
     //make sure we get exactly one file argument
-    if(argv[1] == "" || argv[1] == NULL || argc > 1){
+    if(argv[1] == "" || argv[1] == NULL || argc > 2){
         printf("You need to supply exactly one argument - file to be sorted. Exiting\n");
         exit(-1);
     }
 
     char c;
     entry *entries; //dynamic array of entries
-    int num_lines = 0;
+    int num_lines = 0; //get a count of the number of lines in our file
 
     char *buf;
 
@@ -250,6 +251,7 @@ int main(int argc, char const *argv[])
 
     c = getc(file);
 
+    //count number of lines
     while(c != EOF){
         if(c == '\n'){
             num_lines++;
@@ -262,10 +264,13 @@ int main(int argc, char const *argv[])
     entries = malloc(num_lines * sizeof(entry));
     buf = malloc(size * sizeof(char));
 
+    //see back to the beginning of the file
     if(fseek(file, 0, SEEK_SET)){printf("Failed to seek, exiting\n"); exit(-1);}
 
+    //csv file, so this is how we'll separate our data
     const char delim = ',';
 
+    //parse every line of the file
     for (int i = 0; i < num_lines; ++i)
     {
         //put a line in the buffer
@@ -273,6 +278,7 @@ int main(int argc, char const *argv[])
         // printf("At index %d\n", i);
         getline(&buf, &size, file);
 
+        //strsep is safe to use because if we run into ",," then we'll get '\0'
         strcpy(entries[i].date, strsep(&buf, &delim));
         strcpy(entries[i].season, strsep(&buf, &delim));
         entries[i].neutral = atoi(strsep(&buf, &delim));
@@ -309,17 +315,20 @@ int main(int argc, char const *argv[])
         scanf("%d", &choice);
     }
 
+    //sort in one process (no fork)
     if (choice == 1){
+
+        printf("Sorting...\n");
 
         time_t start = time(NULL);
 
-        printf("array pre-sort:\n");
-        puke(entries, num_lines);
+        // printf("array pre-sort:\n");
+        // puke(entries, num_lines);
 
         bubbly(entries, num_lines);
 
-        printf("array post-sort:\n");
-        puke(entries, num_lines);
+        // printf("array post-sort:\n");
+        // puke(entries, num_lines);
 
         time_t end = time(NULL);
 
@@ -328,7 +337,10 @@ int main(int argc, char const *argv[])
         printf("Sort took %ld seconds\n", delta);
     }
 
+    //sort in two processes
     if(choice == 2){
+
+        printf("Sorting...\n");
 
         time_t start = time(NULL);
 
@@ -342,57 +354,61 @@ int main(int argc, char const *argv[])
 
         split(entries, arr1, arr2, mid, rem);
 
-        printf("array 1 is\n");
-        puke(arr1, mid);
-        printf("array 2 is\n");
-        puke(arr2, rem);
+        // printf("array 1 is\n");
+        // puke(arr1, mid);
+        // printf("array 2 is\n");
+        // puke(arr2, rem);
 
         // puke(arr1, mid);
         // puke(arr2, rem);
 
-        printf("-------------------\n");
+        // printf("-------------------\n");
 
         int pid = fork();
 
+        //forking error
         if(pid < 0){
             perror("fork failed");
             exit(-1);
         }
 
+        //in child
         else if(pid == 0){
 
-            printf("sorting in child\n");
+            // printf("sorting in child\n");
 
             bubbly(arr1, mid);
 
             exit(1);
         }
 
+        //in parent
         else if(pid > 0){
 
-            printf("sorting in parent\n");
+            // printf("sorting in parent\n");
 
             bubbly(arr2, rem);
 
             wait(NULL);
         }
 
-        printf("array 1 post sort:\n");
-        puke(arr1, mid);
-        printf("array 2 post sort:\n");
-        puke(arr2, rem);
+        // printf("array 1 post sort:\n");
+        // puke(arr1, mid);
+        // printf("array 2 post sort:\n");
+        // puke(arr2, rem);
 
         entry *res_arr = malloc(num_lines * sizeof(entry));
 
-        printf("mid before merge is : %d\nrem before merge is: %d\n", mid, rem);
+        // printf("mid before merge is : %d\nrem before merge is: %d\n", mid, rem);
 
+        //merge two halves back together
         merge_arr(res_arr, arr1, arr2, mid, rem);
 
         time_t end = time(NULL);
 
         time_t delta = end - start;
 
-        puke(res_arr, num_lines);
+        // puke(res_arr, num_lines);
 
         printf("Sort took %ld seconds\n", delta);
 
@@ -402,6 +418,9 @@ int main(int argc, char const *argv[])
     /*----------------------------------------------*/
 
     if(choice == 4){
+
+        printf("Sorting...\n");
+
         time_t start = time(NULL);
 
         //split original array
@@ -436,47 +455,51 @@ int main(int argc, char const *argv[])
 
         //by now we have four arrays
 
+        //create an array to store process id's in
         pid_t *process = create_shared_mem(4 * sizeof(pid_t));
 
+        //forks into four total processes
         forker(process, 4);
 
-        printf("---------------------\n");
+        // printf("---------------------\n");
 
+        //depending on which process you are, perform a part of the sort
         if(process[0] == getpid()){
             // printf("I am process p1 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[0], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[0], getpid());
             bubbly(arr1, mid1);
         }
         if(process[1] == getpid()){
             // printf("I am process p2 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[1], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[1], getpid());
             bubbly(arr2, rem1);
 
             exit(1);
         }
         if(process[2] == getpid()){
             // printf("I am process p3 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[2], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[2], getpid());
             bubbly(arr3, mid2);
 
             exit(1);
         }
         if(process[3] == getpid()){
             // printf("I am process p4 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[3], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[3], getpid());
             bubbly(arr4, rem2);
 
             exit(1);
         }
 
+        //merge arrays from 4->2->1
         merge_arr(temp1, arr1, arr2, mid1, rem1);
 
         merge_arr(temp2, arr3, arr4, mid2, rem2);
 
         merge_arr(entries, temp1, temp2, len1, len2);
 
-        printf("final sorted list:\n");
-        puke(entries, num_lines);
+        // printf("final sorted list:\n");
+        // puke(entries, num_lines);
 
         time_t end = time(NULL);
 
@@ -487,6 +510,8 @@ int main(int argc, char const *argv[])
     }
 
     if(choice == 8){
+
+        printf("Sorting...\n");
 
         time_t start = time(NULL);
 
@@ -520,7 +545,7 @@ int main(int argc, char const *argv[])
 
         //split first half of original array
         split(temp1, temp3, temp4, (num_lines / 4), (num_lines / 4));
-        //split seccond half of original array
+        //split second half of original array
         split(temp2, temp5, temp6, (num_lines / 4), ((num_lines / 4) + (num_lines % 4)));
 
         //split quarters into eighths
@@ -531,83 +556,85 @@ int main(int argc, char const *argv[])
 
         //by now we have eight arrays
 
+        //array to store our 8 pid's
         pid_t *process = create_shared_mem(8 * sizeof(pid_t));
 
+        //fork into 8 total processes
         forker(process, 8);
 
-        printf("---------------------\n");
+        // printf("---------------------\n");
 
+        //depending on which process you are, perform a part of the sort
         if(process[0] == getpid()){
             // printf("I am process p1 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[0], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[0], getpid());
             bubbly(arr1, len);
         }
         if(process[1] == getpid()){
             // printf("I am process p2 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[1], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[1], getpid());
             bubbly(arr2, len);
 
             exit(1);
         }
         if(process[2] == getpid()){
             // printf("I am process p3 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[2], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[2], getpid());
             bubbly(arr3, len);
 
             exit(1);
         }
         if(process[3] == getpid()){
             // printf("I am process p4 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[3], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[3], getpid());
             bubbly(arr4, len);
 
             exit(1);
         }
         if(process[4] == getpid()){
             // printf("I am process p4 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[4], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[4], getpid());
             bubbly(arr5, len);
 
             exit(1);
         }
         if(process[5] == getpid()){
             // printf("I am process p4 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[5], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[5], getpid());
             bubbly(arr6, len);
 
             exit(1);
         }
         if(process[6] == getpid()){
             // printf("I am process p4 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[6], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[6], getpid());
             bubbly(arr7, len);
 
             exit(1);
         }
         if(process[7] == getpid()){
             // printf("I am process p4 and my pid is %d\n", getpid());
-            printf("sorting in pid %d ; actual pid = %d\n" ,process[7], getpid());
+            // printf("sorting in pid %d ; actual pid = %d\n" ,process[7], getpid());
             bubbly(arr8, len + rem);
 
             exit(1);
         }
 
-        //split quarters into eighths
+        //merge eighths into quarter arrays
         merge_arr(temp3, arr1, arr2, len, len);
         merge_arr(temp4, arr3, arr4, len, len);
         merge_arr(temp5, arr5, arr6, len, len);
         merge_arr(temp6, arr7, arr8, len, len + rem);
 
-        //split first half of original array
+        //merge quarter sized arrays into half sized arrays
         merge_arr(temp1, temp3, temp4, (num_lines / 4), (num_lines / 4));
-        //split seccond half of original array
         merge_arr(temp2, temp5, temp6, (num_lines / 4), ((num_lines / 4) + (num_lines % 4)));
 
-        //split original array
+        //merge into original array
         merge_arr(entries, temp1, temp2, (num_lines / 2), ((num_lines / 2) + (num_lines % 2)));
 
-        printf("final sorted list:\n");
-        puke(entries, num_lines);
+        // printf("final sorted list:\n");
+        // puke(entries, num_lines);
 
         time_t end = time(NULL);
 
